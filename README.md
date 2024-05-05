@@ -11,3 +11,6 @@ git submodule update --init
 premake5 vs2022
 ```
 
+
+## bounding box from a covariance matrix
+![bbox](bbox.png)
