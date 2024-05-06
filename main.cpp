@@ -113,10 +113,15 @@ int main() {
         mu.z = 0;
 
         static float thetaR = 0.0f;
+        static float thetaR2 = 0.0f;
         static float sx = 8.0f;
         static float sy = 8.0f;
         glm::vec2 u = glm::vec2( std::cosf(thetaR), std::sinf(thetaR)) * sx;
         glm::vec2 v = glm::vec2(-std::sinf(thetaR), std::cosf(thetaR)) * sy;
+        // glm::vec2 v = glm::vec2(-std::sinf(thetaR2), std::cosf(thetaR2)) * sy;
+
+        //glm::vec2 un = glm::vec2(std::cosf(thetaR), std::sinf(thetaR));
+        //glm::vec2 vn = glm::vec2(-std::sinf(thetaR), std::cosf(thetaR));
 
         DrawArrow(mu, mu + glm::vec3{ u.x, u.y, 0 }, 0.01f, { 255,0,0 });
         DrawArrow(mu, mu + glm::vec3{ v.x, v.y, 0 }, 0.01f, { 0,255,0 });
@@ -138,7 +143,27 @@ int main() {
 
         glm::mat2 cov = cov_of( thetaR, sx, sy );
 
+        auto rot2d = []( float rad ) {
+      	    float cosTheta = std::cosf( rad );
+      	    float sinTheta = std::sinf( rad );
+      	    return glm::mat2( cosTheta, sinTheta, -sinTheta, cosTheta);
+        };
+
+        //glm::mat2 R = rot2d( thetaR );
+        //glm::mat2 cov2 = R * glm::mat2(
+        //    glm::dot(u, u), 0.0f,
+      	 //   0.0f, glm::dot(v, v)
+        //) * glm::transpose(R);
+
+        //glm::vec2 un = glm::vec2(std::cosf(thetaR), std::sinf(thetaR));
+        //glm::vec2 vn = glm::vec2(-std::sinf(thetaR), std::cosf(thetaR));
+        //glm::mat2 R2 = {
+        //    un.x, un.y,
+        //    vn.x, vn.y,
+        //};
+
         // det = det(cov) = 1 / det(inv_cov)
+
         float det;
         float lambda0;
         float lambda1;
@@ -149,6 +174,25 @@ int main() {
                 cov[1][1], -cov[0][1],
                 -cov[1][0], cov[0][0]) /
             det;
+
+        // vector formulation
+        {
+            float inv_uu = 1.0f / glm::dot(u, u);
+            float inv_vv = 1.0f / glm::dot(v, v);
+            float inv_uu2 = inv_uu * inv_uu;
+            float inv_vv2 = inv_vv * inv_vv;
+            float a = u.x * u.x * inv_uu2 + v.x * v.x * inv_vv2;
+            float b = u.x * u.y * inv_uu2 + v.x * v.y * inv_vv2;
+            float d = u.y * u.y * inv_uu2 + v.y * v.y * inv_vv2;
+    
+            glm::mat2 inv_cov2 = glm::mat2(
+                a, b, 
+                b, d
+            );
+            inv_cov = inv_cov2;
+
+            // det = 1.0f / (a * d - b * b);
+        }
 
         for ( float y = - 50; y < 50 ; y += 0.5f )
         {
@@ -217,7 +261,8 @@ int main() {
         ImGui::Text("fps = %f", GetFrameRate());
         ImGui::SliderFloat("sx", &sx, 0.01f, 32);
         ImGui::SliderFloat("sy", &sy, 0.01f, 32);
-        ImGui::SliderFloat("theta", &thetaR, 0, glm::pi<float>());
+        ImGui::SliderFloat("theta", &thetaR, 0, glm::pi<float>() * 2);
+        // ImGui::SliderFloat("thetaR2", &thetaR2, 0, glm::pi<float>() * 2);
 
         ImGui::End();
 
