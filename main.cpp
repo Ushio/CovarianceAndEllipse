@@ -109,16 +109,41 @@ int main() {
         DrawGrid(GridAxis::XY, 10.0f, 10, { 128, 128, 128 });
 
         static glm::vec3 mu = { 0, 0, 0 };
-		ManipulatePosition(camera, &mu, 10);
+
+        glm::vec3 previous_mu = mu;
+		ManipulatePosition(camera, &mu, 5);
         mu.z = 0;
+        glm::vec3 dmu = mu - previous_mu;
 
         static float thetaR = 0.0f;
         static float thetaR2 = 0.0f;
         static float sx = 8.0f;
         static float sy = 8.0f;
-        glm::vec2 u = glm::vec2( std::cosf(thetaR), std::sinf(thetaR)) * sx;
-        glm::vec2 v = glm::vec2(-std::sinf(thetaR), std::cosf(thetaR)) * sy;
+        // glm::vec2 u = glm::vec2( std::cosf(thetaR), std::sinf(thetaR)) * sx;
+        // glm::vec2 v = glm::vec2(-std::sinf(thetaR), std::cosf(thetaR)) * sy;
         // glm::vec2 v = glm::vec2(-std::sinf(thetaR2), std::cosf(thetaR2)) * sy;
+
+        static bool orthogonal = true;
+        static glm::vec3 u_p = { 8.0f, 0, 0 };
+        static glm::vec3 v_p = { 0, 8.0f, 0 };
+        ManipulatePosition(camera, &u_p, 5);
+        u_p.z = 0;
+        ManipulatePosition(camera, &v_p, 5);
+        v_p.z = 0;
+
+        u_p += dmu;
+        v_p += dmu;
+
+        if( orthogonal )
+        {
+            glm::vec2 u = u_p - mu;
+            float sy = glm::length( v_p - mu );
+            glm::vec2 ortho_v = glm::normalize(glm::vec2(-u.y, u.x)) * sy;
+            v_p = mu + glm::vec3(ortho_v, 0.0f);
+        }
+
+        glm::vec2 u = u_p - mu;
+        glm::vec2 v = v_p - mu;
 
         //glm::vec2 un = glm::vec2(std::cosf(thetaR), std::sinf(thetaR));
         //glm::vec2 vn = glm::vec2(-std::sinf(thetaR), std::cosf(thetaR));
@@ -129,25 +154,90 @@ int main() {
         DrawText(mu + glm::vec3{ u.x, u.y, 0 }, "u");
         DrawText(mu + glm::vec3{ v.x, v.y, 0 }, "v");
 
+        //for (int k = 1; k <= 3; k++)
+        //{
+        //    PrimBegin( PrimitiveMode::LineStrip );
+        //    for (int i = 0; i <= 64; i++)
+        //    {
+        //        float theta = ((float)i / 64) * glm::pi<float>() * 2.0f;
+        //        glm::vec2 pe = glm::vec2(mu) + u * std::cosf(theta) * (float)k + v * std::sinf(theta) * (float)k;
+        //        PrimVertex({ pe.x, pe.y, 0 }, { 255,255,255 });
+        //    }
+        //    PrimEnd();
+        //}
+
+        // vector formulation
+        glm::mat2 inv_cov;
+        {
+            float inv_uu = 1.0f / glm::dot(u, u);
+            float inv_vv = 1.0f / glm::dot(v, v);
+            float inv_uu2 = inv_uu * inv_uu;
+            float inv_vv2 = inv_vv * inv_vv;
+            float a = u.x * u.x * inv_uu2 + v.x * v.x * inv_vv2;
+            float b = u.x * u.y * inv_uu2 + v.x * v.y * inv_vv2;
+            float d = u.y * u.y * inv_uu2 + v.y * v.y * inv_vv2;
+
+            inv_cov = glm::mat2(
+                a, b,
+                b, d
+            );
+
+            //auto R = glm::mat2(glm::normalize(u), glm::normalize(v));
+            //auto inv_cov = R * glm::mat2(inv_uu, 0, 0, inv_vv) * glm::transpose(R);
+        }
+        // glm::mat2 cov;
+        {
+
+        }
+
+        glm::mat2 cov = glm::inverse(inv_cov);
+        float det_of_cov;
+        float lambda0;
+        float lambda1;
+        eignValues(&lambda0, &lambda1, &det_of_cov, cov);
+
+        float s11 = cov[0][0];
+        float s22 = cov[1][1];
+        float s12 = cov[1][0];
+
+        float eps = 1e-15f;
+        glm::vec2 e0 = glm::normalize(s11 < s22 ? glm::vec2(s12 + eps, lambda0 - s11) : glm::vec2(lambda0 - s22, s12 + eps));
+        //glm::vec2 e1 = glm::normalize(s11 < s22 ? glm::vec2(s12, lambda1 - s11) : glm::vec2(lambda1 - s22, s12));
+        glm::vec2 e1 = { -e0.y, e0.x };
+        glm::vec3 e0_p = mu + glm::vec3(e0 * std::sqrt(lambda0), 0.0f);
+        glm::vec3 e1_p = mu + glm::vec3(e1 * std::sqrt(lambda1), 0.0f);
+
+        glm::vec3 depth = glm::vec3(0, 0, 1);
+        DrawArrow(mu + depth, e0_p + depth, 0.1f, { 255, 255, 0 });
+        DrawArrow(mu + depth, e1_p + depth, 0.1f, { 255, 255, 0 });
+        DrawText(e0_p + depth, "eigen0", 16, { 255, 0, 0 });
+        DrawText(e1_p + depth, "eigen1", 16, { 255, 0, 0 });
+
         for (int k = 1; k <= 3; k++)
         {
-            PrimBegin( PrimitiveMode::LineStrip );
+            float sqLamda0 = std::sqrt(lambda0);
+            float sqLamda1 = std::sqrt(lambda1);
+            PrimBegin(PrimitiveMode::LineStrip);
             for (int i = 0; i <= 64; i++)
             {
                 float theta = ((float)i / 64) * glm::pi<float>() * 2.0f;
-                glm::vec2 pe = glm::vec2(mu) + u * std::cosf(theta) * (float)k + v * std::sinf(theta) * (float)k;
+                glm::vec2 pe = glm::vec2(mu) + e0 * sqLamda0 * std::cosf(theta) * (float)k + e1 * sqLamda1 * std::sinf(theta) * (float)k;
                 PrimVertex({ pe.x, pe.y, 0 }, { 255,255,255 });
             }
             PrimEnd();
         }
 
-        glm::mat2 cov = cov_of( thetaR, sx, sy );
 
-        auto rot2d = []( float rad ) {
-      	    float cosTheta = std::cosf( rad );
-      	    float sinTheta = std::sinf( rad );
-      	    return glm::mat2( cosTheta, sinTheta, -sinTheta, cosTheta);
-        };
+        //printf("l %f %f\n", lambda0, lambda1);
+        //printf("u v %f %f\n", glm::dot(u, u), glm::dot(v, v));
+
+        //glm::mat2 cov = cov_of( thetaR, sx, sy );
+
+        //auto rot2d = []( float rad ) {
+      	 //   float cosTheta = std::cosf( rad );
+      	 //   float sinTheta = std::sinf( rad );
+      	 //   return glm::mat2( cosTheta, sinTheta, -sinTheta, cosTheta);
+        //};
 
         //glm::mat2 R = rot2d( thetaR );
         //glm::mat2 cov2 = R * glm::mat2(
@@ -164,35 +254,16 @@ int main() {
 
         // det = det(cov) = 1 / det(inv_cov)
 
-        float det;
-        float lambda0;
-        float lambda1;
-        eignValues(&lambda0, &lambda1, &det, cov);
+        //float det;
+        //float lambda0;
+        //float lambda1;
+        //eignValues(&lambda0, &lambda1, &det, cov);
 
-        glm::mat2 inv_cov =
-            glm::mat2(
-                cov[1][1], -cov[0][1],
-                -cov[1][0], cov[0][0]) /
-            det;
-
-        // vector formulation
-        {
-            float inv_uu = 1.0f / glm::dot(u, u);
-            float inv_vv = 1.0f / glm::dot(v, v);
-            float inv_uu2 = inv_uu * inv_uu;
-            float inv_vv2 = inv_vv * inv_vv;
-            float a = u.x * u.x * inv_uu2 + v.x * v.x * inv_vv2;
-            float b = u.x * u.y * inv_uu2 + v.x * v.y * inv_vv2;
-            float d = u.y * u.y * inv_uu2 + v.y * v.y * inv_vv2;
-    
-            glm::mat2 inv_cov2 = glm::mat2(
-                a, b, 
-                b, d
-            );
-            inv_cov = inv_cov2;
-
-            // det = 1.0f / (a * d - b * b);
-        }
+        //glm::mat2 inv_cov =
+        //    glm::mat2(
+        //        cov[1][1], -cov[0][1],
+        //        -cov[1][0], cov[0][0]) /
+        //    det;
 
         for ( float y = - 50; y < 50 ; y += 0.5f )
         {
@@ -246,8 +317,9 @@ int main() {
         // The exact bounding box from inverse of covariance matrix
         for (int k = 1; k <= 3; k++)
         {
-            float hsize_invCovX = std::sqrt(inv_cov[1][1] * det) * (float)k;
-            float hsize_invCovY = std::sqrt(inv_cov[0][0] * det) * (float)k;
+            float det_of_invcov = inv_cov[0][0] * inv_cov[1][1] - inv_cov[0][1] * inv_cov[1][0];
+            float hsize_invCovX = std::sqrt(inv_cov[1][1] / det_of_invcov) * (float)k;
+            float hsize_invCovY = std::sqrt(inv_cov[0][0] / det_of_invcov) * (float)k;
             DrawCube(mu, glm::vec3(hsize_invCovX, hsize_invCovY, 0.0f) * 2.0f, { 255, 255, 255 });
         }
         
@@ -259,10 +331,11 @@ int main() {
         ImGui::SetNextWindowSize({ 500, 800 }, ImGuiCond_Once);
         ImGui::Begin("Panel");
         ImGui::Text("fps = %f", GetFrameRate());
-        ImGui::SliderFloat("sx", &sx, 0.01f, 32);
-        ImGui::SliderFloat("sy", &sy, 0.01f, 32);
-        ImGui::SliderFloat("theta", &thetaR, 0, glm::pi<float>() * 2);
+        //ImGui::SliderFloat("sx", &sx, 0.01f, 32);
+        //ImGui::SliderFloat("sy", &sy, 0.01f, 32);
+        //ImGui::SliderFloat("theta", &thetaR, 0, glm::pi<float>() * 2);
         // ImGui::SliderFloat("thetaR2", &thetaR2, 0, glm::pi<float>() * 2);
+        ImGui::Checkbox( "orthogonal", &orthogonal );
 
         ImGui::End();
 
