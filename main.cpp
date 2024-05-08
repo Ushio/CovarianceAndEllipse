@@ -109,7 +109,7 @@ int main() {
     Initialize(config);
 
     Camera3D camera;
-    camera.origin = { 0, 0, 100 };
+    camera.origin = { 0, 0, 10 };
     camera.lookat = { 0, 0, 0 };
 
     double e = GetElapsedTime();
@@ -126,29 +126,27 @@ int main() {
         PushGraphicState();
         SetDepthTest(true);
 
-        DrawGrid(GridAxis::XY, 10.0f, 10, { 128, 128, 128 });
+        DrawGrid(GridAxis::XY, 1.0f, 10, { 128, 128, 128 });
 
         static glm::vec3 mu = { 0, 0, 0 };
 
         glm::vec3 previous_mu = mu;
-		ManipulatePosition(camera, &mu, 5);
+		ManipulatePosition(camera, &mu, 0.5f);
         mu.z = 0;
         glm::vec3 dmu = mu - previous_mu;
 
-        static float thetaR = 0.0f;
-        static float thetaR2 = 0.0f;
-        static float sx = 8.0f;
-        static float sy = 8.0f;
+        static float sx = 1.0f;
+        static float sy = 1.0f;
         // glm::vec2 u = glm::vec2( std::cosf(thetaR), std::sinf(thetaR)) * sx;
         // glm::vec2 v = glm::vec2(-std::sinf(thetaR), std::cosf(thetaR)) * sy;
         // glm::vec2 v = glm::vec2(-std::sinf(thetaR2), std::cosf(thetaR2)) * sy;
 
         static bool orthogonal = true;
-        static glm::vec3 u_p = { 8.0f, 0, 0 };
-        static glm::vec3 v_p = { 0, 8.0f, 0 };
-        ManipulatePosition(camera, &u_p, 5);
-        u_p.z = 0;
-        ManipulatePosition(camera, &v_p, 5);
+        static glm::vec3 u_p = { 1.0f, 0, 0 };
+        static glm::vec3 v_p = { 0, 1.0f, 0 };
+        ManipulatePosition(camera, &u_p, 0.4f);
+        u_p.z = 0;                       
+        ManipulatePosition(camera, &v_p, 0.4f);
         v_p.z = 0;
 
         u_p += dmu;
@@ -186,6 +184,9 @@ int main() {
         //    PrimEnd();
         //}
 
+        //DrawArrow(mu + glm::vec3(0,0,2), mu + glm::vec3(0, 0, 2) + glm::vec3{ UX,UY, 0}, 0.01f, {0,255,255 });
+        //DrawText(mu + glm::vec3(0, 0, 2) + glm::vec3{ UX,UY, 0 }, "UXY");
+
         // vector formulation
         glm::mat2 inv_cov;
         {
@@ -203,6 +204,14 @@ int main() {
             );
             //auto R = glm::mat2(glm::normalize(u), glm::normalize(v));
             //inv_cov = R * glm::mat2(inv_uu, 0, 0, inv_vv) * glm::inverse(R);
+
+            //float a = u.x * u.x + v.x * v.x;
+            //float b = u.x * u.y + v.x * v.y;
+            //float d = u.y * u.y + v.y * v.y;
+            //inv_cov = glm::mat2(
+            //    a, b,
+            //    b, d
+            //);
         }
 
         float det_of_invcov;
@@ -217,9 +226,9 @@ int main() {
         glm::vec3 e0_p = mu + glm::vec3(e0 / std::sqrt( lambda0_inv ), 0.0f);
         glm::vec3 e1_p = mu + glm::vec3(e1 / std::sqrt( lambda1_inv ), 0.0f);
 
-        glm::vec3 depth = glm::vec3(0, 0, 1);
-        DrawArrow(mu + depth, e0_p + depth, 0.1f, { 255, 255, 0 });
-        DrawArrow(mu + depth, e1_p + depth, 0.1f, { 255, 255, 0 });
+        glm::vec3 depth = glm::vec3(0, 0, 0.1f);
+        DrawArrow(mu + depth, e0_p + depth, 0.01f, { 255, 255, 0 });
+        DrawArrow(mu + depth, e1_p + depth, 0.01f, { 255, 255, 0 });
         DrawText(e0_p + depth, "eigen0", 16, { 255, 0, 0 });
         DrawText(e1_p + depth, "eigen1", 16, { 255, 0, 0 });
 
@@ -275,10 +284,10 @@ int main() {
         //        -cov[1][0], cov[0][0]) /
         //    det;
 
-        for ( float y = - 50; y < 50 ; y += 0.5f )
+        for ( float y = - 5; y < 5 ; y += 0.05f )
         {
             PrimBegin(PrimitiveMode::LineStrip);
-            for (float x = -50; x < 50; x += 0.5f)
+            for (float x = -5; x < 5; x += 0.05f)
             {
                 glm::vec2 p = { x, y };
                 glm::vec2 in_v = p - glm::vec2(mu.x, mu.y);
@@ -286,8 +295,10 @@ int main() {
                 float d2 = glm::dot(in_v, inv_cov * in_v);
                 float alpha = glm::exp(-0.5f * d2);
 
+                d2 = sqr(glm::dot(u, in_v)) + sqr(glm::dot(v, in_v));
+
                 glm::u8vec3 color = glm::u8vec3( glm::clamp(plasma_quintic( alpha ) * 255.0f, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(255.0f, 255.0f, 255.0f)) );
-                PrimVertex(glm::vec3(x, y, alpha * 16.0f), color);
+                PrimVertex(glm::vec3(x, y, alpha * 1.0f), color);
             }
             PrimEnd();
 
