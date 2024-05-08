@@ -135,12 +135,6 @@ int main() {
         mu.z = 0;
         glm::vec3 dmu = mu - previous_mu;
 
-        static float sx = 1.0f;
-        static float sy = 1.0f;
-        // glm::vec2 u = glm::vec2( std::cosf(thetaR), std::sinf(thetaR)) * sx;
-        // glm::vec2 v = glm::vec2(-std::sinf(thetaR), std::cosf(thetaR)) * sy;
-        // glm::vec2 v = glm::vec2(-std::sinf(thetaR2), std::cosf(thetaR2)) * sy;
-
         static bool orthogonal = true;
         static glm::vec3 u_p = { 1.0f, 0, 0 };
         static glm::vec3 v_p = { 0, 1.0f, 0 };
@@ -155,10 +149,11 @@ int main() {
         if( orthogonal )
         {
             glm::vec2 u = u_p - mu;
-            float sy = glm::length( v_p - mu );
+            float sy = glm::length(v_p - mu);
             glm::vec2 ortho_v = glm::normalize(glm::vec2(-u.y, u.x)) * sy;
             v_p = mu + glm::vec3(ortho_v, 0.0f);
         }
+
 
         glm::vec2 u = u_p - mu;
         glm::vec2 v = v_p - mu;
@@ -190,28 +185,28 @@ int main() {
         // vector formulation
         glm::mat2 inv_cov;
         {
-            float inv_uu = 1.0f / glm::dot(u, u);
-            float inv_vv = 1.0f / glm::dot(v, v);
-            float inv_uu2 = inv_uu * inv_uu;
-            float inv_vv2 = inv_vv * inv_vv;
-            float a = u.x * u.x * inv_uu2 + v.x * v.x * inv_vv2;
-            float b = u.x * u.y * inv_uu2 + v.x * v.y * inv_vv2;
-            float d = u.y * u.y * inv_uu2 + v.y * v.y * inv_vv2;
+            //float inv_uu = 1.0f / glm::dot(u, u);
+            //float inv_vv = 1.0f / glm::dot(v, v);
+            //float inv_uu2 = inv_uu * inv_uu;
+            //float inv_vv2 = inv_vv * inv_vv;
+            //float a = u.x * u.x * inv_uu2 + v.x * v.x * inv_vv2;
+            //float b = u.x * u.y * inv_uu2 + v.x * v.y * inv_vv2;
+            //float d = u.y * u.y * inv_uu2 + v.y * v.y * inv_vv2;
 
-            inv_cov = glm::mat2(
-                a, b,
-                b, d
-            );
-            //auto R = glm::mat2(glm::normalize(u), glm::normalize(v));
-            //inv_cov = R * glm::mat2(inv_uu, 0, 0, inv_vv) * glm::inverse(R);
-
-            //float a = u.x * u.x + v.x * v.x;
-            //float b = u.x * u.y + v.x * v.y;
-            //float d = u.y * u.y + v.y * v.y;
             //inv_cov = glm::mat2(
             //    a, b,
             //    b, d
             //);
+            //auto R = glm::mat2(glm::normalize(u), glm::normalize(v));
+            //inv_cov = R * glm::mat2(inv_uu, 0, 0, inv_vv) * glm::inverse(R);
+
+            float a = u.x * u.x + v.x * v.x;
+            float b = u.x * u.y + v.x * v.y;
+            float d = u.y * u.y + v.y * v.y;
+            inv_cov = glm::mat2(
+                a, b,
+                b, d
+            );
         }
 
         float det_of_invcov;
@@ -356,6 +351,14 @@ int main() {
         //ImGui::SliderFloat("theta", &thetaR, 0, glm::pi<float>() * 2);
         // ImGui::SliderFloat("thetaR2", &thetaR2, 0, glm::pi<float>() * 2);
         ImGui::Checkbox( "orthogonal", &orthogonal );
+
+        if (ImGui::Button("Make UV orthogonal"))
+        {
+            u = e0 * std::sqrtf(lambda0_inv);
+            v = e1 * std::sqrtf(lambda1_inv);
+            u_p = mu + glm::vec3(u, 0);
+            v_p = mu + glm::vec3(v, 0);
+        }
 
         ImGui::End();
 
