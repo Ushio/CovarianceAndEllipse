@@ -338,6 +338,12 @@ int main() {
             float hsize_invCovY = std::sqrt(inv_cov[0][0] / ( det_of_invcov + eps )) * (float)k;
             DrawCube(mu, glm::vec3(hsize_invCovX, hsize_invCovY, 0.0f) * 2.0f, { 255, 255, 255 });
         }
+
+        if( E != 0.0f )
+        {
+            float maxR3 = 3 * std::sqrtf( 1.0f / E );
+            DrawCircle(mu, { 0,0,1 }, { 255,0,255 }, maxR3, 128, 4);
+        }
         
         PopGraphicState();
         EndCamera();
