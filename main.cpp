@@ -135,7 +135,7 @@ int main() {
         mu.z = 0;
         glm::vec3 dmu = mu - previous_mu;
 
-        static float D = 0.0f;
+        static float E = 0.0f;
         static bool orthogonal = true;
         static glm::vec3 u_p = { 1.0f, 0, 0 };
         static glm::vec3 v_p = { 0, 1.0f, 0 };
@@ -201,9 +201,9 @@ int main() {
             //auto R = glm::mat2(glm::normalize(u), glm::normalize(v));
             //inv_cov = R * glm::mat2(inv_uu, 0, 0, inv_vv) * glm::inverse(R);
 
-            float a = u.x * u.x + v.x * v.x + D;
+            float a = u.x * u.x + v.x * v.x + E;
             float b = u.x * u.y + v.x * v.y;
-            float d = u.y * u.y + v.y * v.y + D;
+            float d = u.y * u.y + v.y * v.y + E;
             inv_cov = glm::mat2(
                 a, b,
                 b, d
@@ -352,7 +352,7 @@ int main() {
         //ImGui::SliderFloat("theta", &thetaR, 0, glm::pi<float>() * 2);
         // ImGui::SliderFloat("thetaR2", &thetaR2, 0, glm::pi<float>() * 2);
         ImGui::Checkbox( "orthogonal", &orthogonal );
-        ImGui::SliderFloat("D", &D, 0, 1);
+        ImGui::SliderFloat("E", &E, 0, 1);
 
         if (ImGui::Button("Make UV orthogonal"))
         {
