@@ -99,6 +99,52 @@ float sqr(float x)
     return x * x;
 }
 
+inline float ss_sqrt(float x) {
+    float y;
+    _mm_store_ss(&y, _mm_sqrt_ss(_mm_load_ss(&x)));
+    return y;
+}
+void eigen_decomposition(glm::vec2 es[2], float lambdas[2], float A_00, float A_01, float A_11 )
+{
+    // jacobi method 
+    auto sincostan_of = [](float* s, float* c, float* t, float invTan2Theta)
+    {
+        float tanTheta = 1.0f / (sign_of(invTan2Theta) * ss_sqrt(1.0f + invTan2Theta * invTan2Theta) + invTan2Theta);
+        float cosTheta = 1.0f / ss_sqrt(1.0f + tanTheta * tanTheta);
+        float sinTheta = tanTheta * cosTheta;
+        *s = sinTheta;
+        *c = cosTheta;
+        *t = tanTheta;
+    };
+
+    float minDiag = ss_min(glm::abs(A_00), glm::abs(A_11));
+    if (minDiag + glm::abs(A_01) == minDiag )
+    {
+        lambdas[0] = A_00;
+        lambdas[1] = A_11;
+        es[0] = { 1, 0 };
+        es[1] = { 0, 1 };
+        return;
+    }
+
+    //glm::mat2 P = glm::mat2(
+    //    c, -s,
+    //    s, c,
+    //);
+
+    float c;
+    float s;
+    float t;
+    float invTan2Theta = 0.5f * (A_11 - A_00) / A_01;
+    sincostan_of(&s, &c, &t, invTan2Theta);
+
+    // simplified via new A_01 == 0
+    lambdas[0] = A_00 - t * A_01;
+    lambdas[1] = A_11 + t * A_01;
+    es[0] = { c, -s };
+    es[1] = { s, c };
+}
+
 int main() {
     using namespace pr;
 
@@ -216,17 +262,29 @@ int main() {
             inv_cov = glm::inverse(cov);
         }
 
-        float det_of_cov;
-        float lambda0;
-        float lambda1;
-        eignValues(&lambda0, &lambda1, &det_of_cov, cov);
+        //float det_of_cov;
+        //float lambda0;
+        //float lambda1;
+        //eignValues(&lambda0, &lambda1, &det_of_cov, cov);
 
-        glm::vec2 e0;
-        glm::vec2 e1;
-        eigenVectors_of_symmetric(&e0, &e1, cov, lambda0);
+        //glm::vec2 e0;
+        //glm::vec2 e1;
+        //eigenVectors_of_symmetric(&e0, &e1, cov, lambda0);
 
-        glm::vec3 e0_p = mu + glm::vec3(e0 * std::sqrt( lambda0 ), 0.0f);
-        glm::vec3 e1_p = mu + glm::vec3(e1 * std::sqrt( lambda1 ), 0.0f);
+        //glm::vec3 e0_p = mu + glm::vec3(e0 * std::sqrt( lambda0 ), 0.0f);
+        //glm::vec3 e1_p = mu + glm::vec3(e1 * std::sqrt( lambda1 ), 0.0f);
+
+        //glm::vec3 depth = glm::vec3(0, 0, 0.1f);
+        //DrawArrow(mu + depth, e0_p + depth, 0.01f, { 255, 255, 0 });
+        //DrawArrow(mu + depth, e1_p + depth, 0.01f, { 255, 255, 0 });
+        //DrawText(e0_p + depth, "eigen0", 16, { 255, 0, 0 });
+        //DrawText(e1_p + depth, "eigen1", 16, { 255, 0, 0 });
+
+        float rambdas[2];
+        glm::vec2 es[2];
+        eigen_decomposition(es, rambdas, cov[0][0], cov[0][1], cov[1][1]);
+        glm::vec3 e0_p = mu + glm::vec3(es[0] * std::sqrt(rambdas[0]), 0.0f);
+        glm::vec3 e1_p = mu + glm::vec3(es[1] * std::sqrt(rambdas[1]), 0.0f);
 
         glm::vec3 depth = glm::vec3(0, 0, 0.1f);
         DrawArrow(mu + depth, e0_p + depth, 0.01f, { 255, 255, 0 });
@@ -234,15 +292,18 @@ int main() {
         DrawText(e0_p + depth, "eigen0", 16, { 255, 0, 0 });
         DrawText(e1_p + depth, "eigen1", 16, { 255, 0, 0 });
 
+
+        float det_of_cov = glm::determinant(cov);
+
         for (int k = 1; k <= 3; k++)
         {
-            float sqLamda0 = std::sqrt(lambda0);
-            float sqLamda1 = std::sqrt(lambda1);
+            float sqLamda0 = std::sqrt(rambdas[0]);
+            float sqLamda1 = std::sqrt(rambdas[1]);
             PrimBegin(PrimitiveMode::LineStrip);
             for (int i = 0; i <= 64; i++)
             {
                 float theta = ((float)i / 64) * glm::pi<float>() * 2.0f;
-                glm::vec2 pe = glm::vec2(mu) + e0 * sqLamda0 * std::cosf(theta) * (float)k + e1 * sqLamda1 * std::sinf(theta) * (float)k;
+                glm::vec2 pe = glm::vec2(mu) + es[0] * sqLamda0 * std::cosf(theta) * (float)k + es[1] * sqLamda1 * std::sinf(theta) * (float)k;
                 PrimVertex({ pe.x, pe.y, 0 }, { 255,255,255 });
             }
             PrimEnd();
