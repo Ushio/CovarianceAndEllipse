@@ -201,13 +201,17 @@ int main() {
             //auto R = glm::mat2(glm::normalize(u), glm::normalize(v));
             //inv_cov = R * glm::mat2(inv_uu, 0, 0, inv_vv) * glm::inverse(R);
 
-            float a = u.x * u.x + v.x * v.x + E;
+            float a = u.x * u.x + v.x * v.x;
             float b = u.x * u.y + v.x * v.y;
-            float d = u.y * u.y + v.y * v.y + E;
-            inv_cov = glm::mat2(
-                a, b,
-                b, d
-            );
+            float d = u.y * u.y + v.y * v.y;
+            //inv_cov = glm::mat2(
+            //    a, b,
+            //    b, d
+            //);
+            inv_cov = glm::inverse(glm::mat2(
+                a + E, b,
+                b, d + E
+            ));
         }
 
         float det_of_invcov;
@@ -291,7 +295,8 @@ int main() {
                 float d2 = glm::dot(in_v, inv_cov * in_v);
                 float alpha = glm::exp(-0.5f * d2);
 
-                d2 = sqr(glm::dot(u, in_v)) + sqr(glm::dot(v, in_v));
+                // d2 = sqr(glm::dot(u, in_v)) + sqr(glm::dot(v, in_v));
+                //alpha = glm::exp(-0.5f * d2);
 
                 glm::u8vec3 color = glm::u8vec3( glm::clamp(plasma_quintic( alpha ) * 255.0f, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(255.0f, 255.0f, 255.0f)) );
                 PrimVertex(glm::vec3(x, y, alpha * 1.0f), color);
@@ -360,13 +365,13 @@ int main() {
         ImGui::Checkbox( "orthogonal", &orthogonal );
         ImGui::SliderFloat("E", &E, 0, 1);
 
-        if (ImGui::Button("Make UV orthogonal"))
-        {
-            u = e0 * std::sqrtf(lambda0_inv);
-            v = e1 * std::sqrtf(lambda1_inv);
-            u_p = mu + glm::vec3(u, 0);
-            v_p = mu + glm::vec3(v, 0);
-        }
+        //if (ImGui::Button("Make UV orthogonal"))
+        //{
+        //    u = e0 * std::sqrtf(lambda0_inv);
+        //    v = e1 * std::sqrtf(lambda1_inv);
+        //    u_p = mu + glm::vec3(u, 0);
+        //    v_p = mu + glm::vec3(v, 0);
+        //}
 
         ImGui::End();
 
