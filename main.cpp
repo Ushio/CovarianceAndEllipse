@@ -184,6 +184,7 @@ int main() {
         //DrawText(mu + glm::vec3(0, 0, 2) + glm::vec3{ UX,UY, 0 }, "UXY");
 
         // vector formulation
+        glm::mat2 cov;
         glm::mat2 inv_cov;
         {
             //float inv_uu = 1.0f / glm::dot(u, u);
@@ -208,23 +209,24 @@ int main() {
             //    a, b,
             //    b, d
             //);
-            inv_cov = glm::inverse(glm::mat2(
+            cov = glm::mat2(
                 a + E, b,
                 b, d + E
-            ));
+            );
+            inv_cov = glm::inverse(cov);
         }
 
-        float det_of_invcov;
-        float lambda0_inv;
-        float lambda1_inv;
-        eignValues(&lambda0_inv, &lambda1_inv, &det_of_invcov, inv_cov);
+        float det_of_cov;
+        float lambda0;
+        float lambda1;
+        eignValues(&lambda0, &lambda1, &det_of_cov, cov);
 
         glm::vec2 e0;
         glm::vec2 e1;
-        eigenVectors_of_symmetric(&e0, &e1, inv_cov, lambda0_inv);
+        eigenVectors_of_symmetric(&e0, &e1, cov, lambda0);
 
-        glm::vec3 e0_p = mu + glm::vec3(e0 / std::sqrt( lambda0_inv ), 0.0f);
-        glm::vec3 e1_p = mu + glm::vec3(e1 / std::sqrt( lambda1_inv ), 0.0f);
+        glm::vec3 e0_p = mu + glm::vec3(e0 * std::sqrt( lambda0 ), 0.0f);
+        glm::vec3 e1_p = mu + glm::vec3(e1 * std::sqrt( lambda1 ), 0.0f);
 
         glm::vec3 depth = glm::vec3(0, 0, 0.1f);
         DrawArrow(mu + depth, e0_p + depth, 0.01f, { 255, 255, 0 });
@@ -234,8 +236,8 @@ int main() {
 
         for (int k = 1; k <= 3; k++)
         {
-            float sqLamda0 = std::sqrt(1.0f / lambda0_inv);
-            float sqLamda1 = std::sqrt(1.0f / lambda1_inv);
+            float sqLamda0 = std::sqrt(lambda0);
+            float sqLamda1 = std::sqrt(lambda1);
             PrimBegin(PrimitiveMode::LineStrip);
             for (int i = 0; i <= 64; i++)
             {
@@ -245,7 +247,6 @@ int main() {
             }
             PrimEnd();
         }
-
 
         //printf("l %f %f\n", lambda0, lambda1);
         //printf("u v %f %f\n", glm::dot(u, u), glm::dot(v, v));
@@ -295,9 +296,6 @@ int main() {
                 float d2 = glm::dot(in_v, inv_cov * in_v);
                 float alpha = glm::exp(-0.5f * d2);
 
-                // d2 = sqr(glm::dot(u, in_v)) + sqr(glm::dot(v, in_v));
-                //alpha = glm::exp(-0.5f * d2);
-
                 glm::u8vec3 color = glm::u8vec3( glm::clamp(plasma_quintic( alpha ) * 255.0f, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(255.0f, 255.0f, 255.0f)) );
                 PrimVertex(glm::vec3(x, y, alpha * 1.0f), color);
             }
@@ -338,9 +336,8 @@ int main() {
         // The exact bounding box from inverse of covariance matrix
         for (int k = 1; k <= 3; k++)
         {
-            float eps = 1e-15f;
-            float hsize_invCovX = std::sqrt(inv_cov[1][1] / ( det_of_invcov + eps )) * (float)k;
-            float hsize_invCovY = std::sqrt(inv_cov[0][0] / ( det_of_invcov + eps )) * (float)k;
+            float hsize_invCovX = std::sqrt( inv_cov[1][1] * det_of_cov ) * (float)k;
+            float hsize_invCovY = std::sqrt( inv_cov[0][0] * det_of_cov ) * (float)k;
             DrawCube(mu, glm::vec3(hsize_invCovX, hsize_invCovY, 0.0f) * 2.0f, { 255, 255, 255 });
         }
 
