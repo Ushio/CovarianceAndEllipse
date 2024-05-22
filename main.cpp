@@ -106,17 +106,6 @@ inline float ss_sqrt(float x) {
 }
 void eigen_decomposition(glm::vec2 es[2], float lambdas[2], float A_00, float A_01, float A_11 )
 {
-    // jacobi method 
-    auto sincostan_of = [](float* s, float* c, float* t, float invTan2Theta)
-    {
-        float tanTheta = 1.0f / (sign_of(invTan2Theta) * ss_sqrt(1.0f + invTan2Theta * invTan2Theta) + invTan2Theta);
-        float cosTheta = 1.0f / ss_sqrt(1.0f + tanTheta * tanTheta);
-        float sinTheta = tanTheta * cosTheta;
-        *s = sinTheta;
-        *c = cosTheta;
-        *t = tanTheta;
-    };
-
     float minDiag = ss_min(glm::abs(A_00), glm::abs(A_11));
     if (minDiag + glm::abs(A_01) == minDiag )
     {
@@ -132,11 +121,20 @@ void eigen_decomposition(glm::vec2 es[2], float lambdas[2], float A_00, float A_
     //    s, c,
     //);
 
-    float c;
-    float s;
-    float t;
-    float invTan2Theta = 0.5f * (A_11 - A_00) / A_01;
-    sincostan_of(&s, &c, &t, invTan2Theta);
+    // jacobi method - geometric solution
+    float X = 0.5f * (A_11 - A_00); 
+    float Y = A_01;
+    float YY = Y * Y;
+    float L = ss_sqrt( X * X + YY );
+
+    // The half vector
+    float hx = X + sign_of(X) * L;
+    float hy = Y;
+    float hyhy = YY;
+    float lh = ss_sqrt( hx * hx + hyhy );
+    float t = hy / hx;
+    float c = hx / lh;
+    float s = c * t;
 
     // simplified via new A_01 == 0
     lambdas[0] = A_00 - t * A_01;
