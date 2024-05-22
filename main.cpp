@@ -106,16 +106,6 @@ inline float ss_sqrt(float x) {
 }
 void eigen_decomposition(glm::vec2 es[2], float lambdas[2], float A_00, float A_01, float A_11 )
 {
-    float minDiag = ss_min(glm::abs(A_00), glm::abs(A_11));
-    if (minDiag + glm::abs(A_01) == minDiag )
-    {
-        lambdas[0] = A_00;
-        lambdas[1] = A_11;
-        es[0] = { 1, 0 };
-        es[1] = { 0, 1 };
-        return;
-    }
-
     //glm::mat2 P = glm::mat2(
     //    c, -s,
     //    s, c,
@@ -125,7 +115,7 @@ void eigen_decomposition(glm::vec2 es[2], float lambdas[2], float A_00, float A_
     float X = 0.5f * (A_11 - A_00); 
     float Y = A_01;
     float YY = Y * Y;
-    float L = ss_sqrt( X * X + YY );
+    float L = ss_sqrt( X * X + YY + FLT_MIN /* handle the singularity */);
 
     // The half vector
     float hx = X + sign_of(X) * L;
