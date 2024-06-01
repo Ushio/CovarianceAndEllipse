@@ -133,6 +133,45 @@ void eigen_decomposition(glm::vec2 es[2], float lambdas[2], float A_00, float A_
     es[1] = { s, c };
 }
 
+bool AABB_Ellipse( glm::vec2 AABB_a, glm::vec2 AABB_b, glm::vec2 o, glm::vec2 u, glm::vec2 v, float uScale, float vScale )
+{
+    float w_half = ( AABB_b.x - AABB_a.x ) * 0.5f;
+    float h_half = ( AABB_b.y - AABB_a.y ) * 0.5f;
+
+    glm::vec2 worldx2local = { u.x / uScale, v.x / vScale };
+    glm::vec2 worldy2local = { u.y / uScale, v.y / vScale };
+    glm::mat2 M = { worldx2local, worldy2local };
+    glm::vec2 p = (AABB_a + AABB_b) * 0.5f - o;
+
+    if (glm::abs(p.x) < w_half && glm::abs(p.y) < h_half)
+    {
+        return true;
+    }
+
+    glm::vec2 p_prime = M * p;
+
+    glm::vec2 X_box = w_half * worldx2local;
+    glm::vec2 Y_box = h_half * worldy2local;
+
+    glm::vec2 E0 = p_prime + X_box;
+    glm::vec2 E1 = p_prime - X_box;
+    glm::vec2 E2 = p_prime + Y_box;
+    glm::vec2 E3 = p_prime - Y_box;
+    glm::vec2 p0 = E0 + glm::clamp( glm::dot(Y_box, -E0) / glm::dot(Y_box, Y_box), -1.0f, 1.0f) * Y_box;
+    glm::vec2 p1 = E1 + glm::clamp( glm::dot(Y_box, -E1) / glm::dot(Y_box, Y_box), -1.0f, 1.0f) * Y_box;
+    glm::vec2 p2 = E2 + glm::clamp( glm::dot(X_box, -E2) / glm::dot(X_box, X_box), -1.0f, 1.0f) * X_box;
+    glm::vec2 p3 = E3 + glm::clamp( glm::dot(X_box, -E3) / glm::dot(X_box, X_box), -1.0f, 1.0f) * X_box;
+
+    float d2 = FLT_MAX;
+
+    d2 = ss_min(d2, glm::dot(p0, p0));
+    d2 = ss_min(d2, glm::dot(p1, p1));
+    d2 = ss_min(d2, glm::dot(p2, p2));
+    d2 = ss_min(d2, glm::dot(p3, p3));
+
+    return d2 < 1.0f;
+}
+
 int main() {
     using namespace pr;
 
@@ -161,6 +200,13 @@ int main() {
         SetDepthTest(true);
 
         DrawGrid(GridAxis::XY, 1.0f, 10, { 128, 128, 128 });
+
+        static glm::vec3 box_a = { 1, 1, 0 };
+        static glm::vec3 box_b = { 2, 2, 0 };
+        ManipulatePosition(camera, &box_a, 0.4f);
+        box_a.z = 0;
+        ManipulatePosition(camera, &box_b, 0.4f);
+        box_b.z = 0;
 
         static glm::vec3 mu = { 0, 0, 0 };
 
@@ -281,6 +327,17 @@ int main() {
         DrawText(e1_p + depth, "eigen1", 16, { 255, 0, 0 });
 
 
+        // collision detection
+        bool hit = AABB_Ellipse(glm::vec2(box_a), glm::vec2(box_b), glm::vec2(mu), es[0], es[1], sqrtf(rambdas[0]), sqrtf(rambdas[1]));
+        if (hit)
+        {
+            DrawAABB(box_a, box_b + glm::vec3(0,0,0.01f), {255,0,0}, 2);
+        }
+        else
+        {
+            DrawAABB(box_a, box_b + glm::vec3(0, 0, 0.01f), { 255,255,255 }, 1);
+        }
+
         float det_of_cov = glm::determinant(cov);
 
         for (int k = 1; k <= 3; k++)
@@ -297,42 +354,6 @@ int main() {
             PrimEnd();
         }
 
-        //printf("l %f %f\n", lambda0, lambda1);
-        //printf("u v %f %f\n", glm::dot(u, u), glm::dot(v, v));
-
-        //glm::mat2 cov = cov_of( thetaR, sx, sy );
-
-        //auto rot2d = []( float rad ) {
-      	 //   float cosTheta = std::cosf( rad );
-      	 //   float sinTheta = std::sinf( rad );
-      	 //   return glm::mat2( cosTheta, sinTheta, -sinTheta, cosTheta);
-        //};
-
-        //glm::mat2 R = rot2d( thetaR );
-        //glm::mat2 cov2 = R * glm::mat2(
-        //    glm::dot(u, u), 0.0f,
-      	 //   0.0f, glm::dot(v, v)
-        //) * glm::transpose(R);
-
-        //glm::vec2 un = glm::vec2(std::cosf(thetaR), std::sinf(thetaR));
-        //glm::vec2 vn = glm::vec2(-std::sinf(thetaR), std::cosf(thetaR));
-        //glm::mat2 R2 = {
-        //    un.x, un.y,
-        //    vn.x, vn.y,
-        //};
-
-        // det = det(cov) = 1 / det(inv_cov)
-
-        //float det;
-        //float lambda0;
-        //float lambda1;
-        //eignValues(&lambda0, &lambda1, &det, cov);
-
-        //glm::mat2 inv_cov =
-        //    glm::mat2(
-        //        cov[1][1], -cov[0][1],
-        //        -cov[1][0], cov[0][0]) /
-        //    det;
 
         for ( float y = - 5; y < 5 ; y += 0.05f )
         {
