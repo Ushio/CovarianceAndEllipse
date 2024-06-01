@@ -140,35 +140,26 @@ bool AABB_Ellipse( glm::vec2 AABB_a, glm::vec2 AABB_b, glm::vec2 o, glm::vec2 u,
 
     glm::vec2 worldx2local = { u.x / uScale, v.x / vScale };
     glm::vec2 worldy2local = { u.y / uScale, v.y / vScale };
-    glm::mat2 M = { worldx2local, worldy2local };
     glm::vec2 p = (AABB_a + AABB_b) * 0.5f - o;
 
-    if (glm::abs(p.x) < w_half && glm::abs(p.y) < h_half)
+    if (glm::abs(p.x) < glm::abs(w_half) && glm::abs(p.y) < glm::abs(h_half))
     {
         return true;
     }
 
-    glm::vec2 p_prime = M * p;
+    glm::vec2 p_prime = p.x * worldx2local + p.y * worldy2local;
 
     glm::vec2 X_box = w_half * worldx2local;
     glm::vec2 Y_box = h_half * worldy2local;
 
-    glm::vec2 E0 = p_prime + X_box;
-    glm::vec2 E1 = p_prime - X_box;
-    glm::vec2 E2 = p_prime + Y_box;
-    glm::vec2 E3 = p_prime - Y_box;
-    glm::vec2 p0 = E0 + glm::clamp( glm::dot(Y_box, -E0) / glm::dot(Y_box, Y_box), -1.0f, 1.0f) * Y_box;
-    glm::vec2 p1 = E1 + glm::clamp( glm::dot(Y_box, -E1) / glm::dot(Y_box, Y_box), -1.0f, 1.0f) * Y_box;
-    glm::vec2 p2 = E2 + glm::clamp( glm::dot(X_box, -E2) / glm::dot(X_box, X_box), -1.0f, 1.0f) * X_box;
-    glm::vec2 p3 = E3 + glm::clamp( glm::dot(X_box, -E3) / glm::dot(X_box, X_box), -1.0f, 1.0f) * X_box;
-
-    float d2 = FLT_MAX;
-
-    d2 = ss_min(d2, glm::dot(p0, p0));
-    d2 = ss_min(d2, glm::dot(p1, p1));
-    d2 = ss_min(d2, glm::dot(p2, p2));
-    d2 = ss_min(d2, glm::dot(p3, p3));
-
+    // check only the side closer to zero
+    float signX = -sign_of(glm::dot(p_prime, X_box));
+    float signY = -sign_of(glm::dot(p_prime, Y_box));
+    glm::vec2 EX = p_prime + signX * X_box;
+    glm::vec2 EY = p_prime + signY * Y_box;
+    glm::vec2 PX = EX + glm::clamp(glm::dot(Y_box, -EX) / glm::dot(Y_box, Y_box), -1.0f, 1.0f) * Y_box;
+    glm::vec2 PY = EY + glm::clamp(glm::dot(X_box, -EY) / glm::dot(X_box, X_box), -1.0f, 1.0f) * X_box;
+    float d2 = ss_min(glm::dot(PX, PX), glm::dot(PY, PY));
     return d2 < 1.0f;
 }
 
