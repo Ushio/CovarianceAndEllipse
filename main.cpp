@@ -318,16 +318,115 @@ int main() {
         DrawText(e1_p + depth, "eigen1", 16, { 255, 0, 0 });
 
 
+        // maximum in box
+        DrawAABB(box_a, box_b + glm::vec3(0, 0, 0.01f), { 255,255,255 }, 1);
+
+        glm::vec2 b_lower = glm::min(glm::vec2(box_a), glm::vec2(box_b));
+        glm::vec2 b_upper = glm::max(glm::vec2(box_a), glm::vec2(box_b));
+        glm::vec2 b_c = (b_lower + b_upper) * 0.5f;
+        //glm::vec2 p_hat = {
+        //    mu.x < b_c.x ? b_lower.x : b_upper.x,
+        //    mu.y < b_c.y ? b_lower.y : b_upper.y,
+        //};
+        glm::vec2 p_hat = glm::clamp(glm::vec2(mu), b_lower, b_upper);
+
+        {
+            // from the StopThePop paper
+            //glm::vec2 dx =
+            //{
+            //    (b_upper.x - b_lower.x) * sign_of(b_c.x - mu.x),
+            //    0.0f
+            //};
+            //glm::vec2 dy =
+            //{
+            //    0.0f,
+            //    (b_upper.y - b_lower.y) * sign_of(b_c.y - mu.y),
+            //};
+        
+            // actually need some branching
+            //float ty = glm::clamp(glm::dot(dy, inv_cov * (glm::vec2(mu) - p_hat)) / glm::dot(dy, inv_cov * dy), 0.0f, 1.0f);
+            //float tx = glm::clamp(glm::dot(dx, inv_cov * (glm::vec2(mu) - p_hat)) / glm::dot(dx, inv_cov * dx), 0.0f, 1.0f);
+
+            DrawSphere({ p_hat.x, p_hat.y, 0.0f }, 0.06f, { 255, 255, 0 });
+
+            //DrawArrow(glm::vec3(p_hat, 0.0f), glm::vec3(p_hat + dx, 0.0f), 0.02f, { 255, 0, 0 });
+            //DrawArrow(glm::vec3(p_hat, 0.0f), glm::vec3(p_hat + dy, 0.0f), 0.02f, { 0, 255, 0 });
+
+            //glm::vec2 max_p = p_hat + dx * tx + dy * ty;
+            //DrawSphere({ max_p.x, max_p.y, 0.01f }, 0.07f, { 128, 0, 255 });
+
+            float x_maximum = glm::clamp( mu.x - inv_cov[0][1] / inv_cov[0][0] * (p_hat.y - mu.y), b_lower.x, b_upper.x );
+            float y_maximum = glm::clamp( mu.y - inv_cov[0][1] / inv_cov[1][1] * (p_hat.x - mu.x), b_lower.y, b_upper.y );
+            DrawSphere({ x_maximum, y_maximum, 0.08f }, 0.07f, { 255, 0, 128 });
+        }
+
         // collision detection
-        bool hit = AABB_Ellipse(glm::vec2(box_a), glm::vec2(box_b), glm::vec2(mu), es[0], es[1], sqrtf(rambdas[0]), sqrtf(rambdas[1]));
-        if (hit)
-        {
-            DrawAABB(box_a, box_b + glm::vec3(0,0,0.01f), {255,0,0}, 2);
-        }
-        else
-        {
-            DrawAABB(box_a, box_b + glm::vec3(0, 0, 0.01f), { 255,255,255 }, 1);
-        }
+        //bool hit = AABB_Ellipse(glm::vec2(box_a), glm::vec2(box_b), glm::vec2(mu), es[0], es[1], sqrtf(rambdas[0]), sqrtf(rambdas[1]));
+
+        //glm::vec2 q = (glm::vec2(box_a) + glm::vec2(box_b)) * 0.5f;
+        //glm::vec2 hwide = ( glm::vec2(box_a) - glm::vec2(box_b) ) * 0.5f;
+
+        //float w = abs( hwide.x );
+
+        //float Lx = glm::abs( glm::dot(es[0], q - glm::vec2(mu)) );
+        //float Ly = glm::abs( glm::dot(es[1], q - glm::vec2(mu)) );
+
+        //float wx = glm::abs(glm::dot(es[0], glm::vec2(w, w)));
+        //float wy = glm::abs(glm::dot(es[1], glm::vec2(w, w)));
+
+        //if (wx + sqrtf(rambdas[0]) * 3.0f < Lx)
+        //{
+        //    hit = false;
+        //}
+        //else if (wy + sqrtf(rambdas[1]) * 3.0f < Ly)
+        //{
+        //    hit = false;
+        //}
+        //else
+        //{
+        //    hit = true;
+        //}
+        //glm::vec2 q = ( glm::vec2(box_a) + glm::vec2(box_b) ) * 0.5f;
+        //glm::vec2 V = q - glm::vec2(mu);
+        //float d2 = glm::dot(V, inv_cov * V);
+        //float d = sqrtf(d2);
+
+        //float diag = glm::length(glm::vec2(box_a) - glm::vec2(box_b)) * 0.5f;
+
+        //float minLambda = ss_min(rambdas[0], rambdas[1]);
+        //if (d - sqrtf(2.0f) * diag / minLambda < 3.0f)
+        //{
+        //    hit = true;
+        //}
+        //else
+        //{
+        //    hit = false;
+        //}
+
+        // 
+        //for (int i = 0; i < 4; i++)
+        //{
+        //    DrawCircle({ q.x, q.y, 0.0f }, { 0, 0, 1 }, { 255, 0,0 }, 0.05f);
+
+        //    glm::vec2 V = q - glm::vec2(mu);
+        //    //float d2 = glm::dot(V, inv_cov * V);
+        //    //float alpha = glm::exp(-0.5f * d2);
+        //    float dxdA = (2.0f * inv_cov[0][0] * V.x + 2.0f * inv_cov[1][0] * V.y);
+        //    float dydA = (2.0f * inv_cov[1][1] * V.y + 2.0f * inv_cov[1][0] * V.x);
+        //    q.x -= dxdA * 0.1f;
+        //    q.y -= dydA * 0.1f;
+        //    //q.x = glm::clamp(q.x, box_a.x, box_b.x);
+        //    //q.y = glm::clamp(q.y, box_a.y, box_b.y);
+        //}
+
+        //if (hit)
+        //{
+        //    DrawAABB(box_a, box_b + glm::vec3(0, 0, 0.01f), { 255,0,0 }, 2);
+        //}
+        //else
+        //{
+        //    DrawAABB(box_a, box_b + glm::vec3(0, 0, 0.01f), { 255,255,255 }, 1);
+        //}
 
         float det_of_cov = glm::determinant(cov);
 
